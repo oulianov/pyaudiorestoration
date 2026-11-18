@@ -204,52 +204,40 @@ class Canvas(spectrum.SpectrumCanvas):
 						bin_u = self.freq_2_bin(f_upper)
 						# take the mean volume across this band
 						vol = np.mean(imdata[bin_l:bin_u, frame_b:frame_a], axis=0)
-						half_width = self.props.dropout_widget.width / 1000 / 2
-						frames_half_width = self.time_2_frame(half_width)
-						vol_lt = savgol_filter(vol, frames_half_width*12, 5)
+						base_half_width = self.props.dropout_widget.width / 1000 / 2
+						# savgol needs a window longer than its polynomial order
+						frames_half_width = max(self.time_2_frame(base_half_width), 7)
+						frames_long = frames_half_width * 12
+						if len(vol) < frames_long:
+							logging.warning(f"Selection is too short for detection, select at least {self.frame_2_time(frames_long):.2f} s")
+							return
+						vol_lt = savgol_filter(vol, frames_long, 5)
 						vol_st = savgol_filter(vol, frames_half_width, 5)
 
 						# detect valleys in the volume curve
-						peaks, properties = scipy.signal.find_peaks(-vol, height=None, threshold=None, distance=None,
-																	prominence=10.0-self.props.dropout_widget.sensitivity, wlen=None, rel_height=0.5,
-																	plateau_size=None)
-						# plt.vlines(peaks, -100, 1, colors=(0, 1.0, 0, 0.2), linestyles='--', label='peaks',)
-						# plt.plot(vol, label='raw vol',)
-						# plt.plot(vol_lt, label='vol_lt',)
-						# plt.plot(vol_st, label='vol_st',)
-						# plt.show()
+						peaks, properties = scipy.signal.find_peaks(-vol, prominence=10.0-self.props.dropout_widget.sensitivity)
+						f_qw = max(self.time_2_frame(base_half_width / 4), 2)
+						f_hw = self.time_2_frame(base_half_width)
 						_markers = []
+						n_refined = 0
 						for f_peak in peaks:
-							# get intersection of variously interpolated curves
 							t_center = self.frame_2_time(frame_b + f_peak)
-							try:
-								# optimize hw by measuring the width of a parabola fit through the dropout and the low-passed signal
-								# get frames for fitting the parabola
-								f_qw = self.time_2_frame(half_width / 4)
-								f_before = f_peak - f_qw
-								f_after = f_peak + f_qw
-								xp = np.arange(f_before, f_after)
-								# fit the parabola
-								parabola_coeff = np.polyfit(xp, vol_st[f_before:f_after], 2)
-								parabola = np.poly1d(parabola_coeff, r=False, variable=None)
-								# get frames for sampling the parabola
-								f_hw = self.time_2_frame(half_width)
-								f_before = f_peak - f_hw
-								f_after = f_peak + f_hw
-								xp = np.arange(f_before, f_after)
-								fp = parabola(xp)
-								# get intersection and calculate width from peaks
-								f_intersection = scipy.signal.argrelmin(np.abs(fp-vol_lt[f_before:f_after]))[0]
-								assert len(f_intersection)==2
-								# plt.plot(xp, fp, label='parab')
-								# plt.plot(f_intersection+f_before, fp[f_intersection], 'ro', label='x',)
-								half_width = self.frame_2_time(f_intersection[1]-f_intersection[0])
-							except:
-								logging.exception(f"Could not refine width at peak {f_peak}")
+							half_width = base_half_width
+							# refine the width from where a parabola fit through the dropout meets the low-passed signal
+							if f_peak - f_hw >= 0 and f_peak + f_hw <= len(vol):
+								# fit around the peak in local frame offsets to keep the fit well conditioned
+								xp = np.arange(-f_qw, f_qw)
+								parabola = np.poly1d(np.polyfit(xp, vol_st[f_peak - f_qw:f_peak + f_qw], 2))
+								xp = np.arange(-f_hw, f_hw)
+								f_intersection = scipy.signal.argrelmin(np.abs(parabola(xp) - vol_lt[f_peak - f_hw:f_peak + f_hw]))[0]
+								if len(f_intersection) == 2:
+									half_width = self.frame_2_time(f_intersection[1] - f_intersection[0]) / 2
+									n_refined += 1
 							t_before = t_center-half_width
 							t_after = t_center+half_width
 							marker = markers.DropoutSample(self, (t_before, f_lower), (t_after, f_upper), surrounding=surrounding, gain=gain)
 							_markers.append(marker)
+						logging.info(f"Detected {len(_markers)} dropouts, refined the width of {n_refined}")
 						self.props.undo_stack.push(AddAction(_markers))
 
 

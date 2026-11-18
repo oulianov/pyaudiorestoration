@@ -18,9 +18,10 @@ def read_file(audio_path):
 
 def write_file(audio_path, signal, sr, channels, suffix="_out"):
 	# write the final signal
-	with sf.SoundFile(f"{os.path.splitext(audio_path)[0]}{suffix}.wav", 'w+', sr, channels, subtype='FLOAT') as outfile:
+	out_path = f"{os.path.splitext(audio_path)[0]}{suffix}.wav"
+	with sf.SoundFile(out_path, 'w+', sr, channels, subtype='FLOAT') as outfile:
 		outfile.write(signal)
-	logging.info(f"Wrote {audio_path}")
+	logging.info(f"Wrote {out_path}")
 
 
 def read_trace(filename):

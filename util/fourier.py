@@ -91,10 +91,13 @@ def timed_log(method_name):
 
 def torch_rfft2(n_fft, step, window, x, zeropad):
 	with timed_log("pytorch"):
-		device = "cuda"
-		# device = "cpu"
-		if device == "cuda":
-			assert torch.cuda.is_available()
+		if torch.backends.mps.is_available():
+			device = "mps"
+		elif torch.cuda.is_available():
+			device = "cuda"
+		else:
+			raise RuntimeError("no GPU backend for torch")
+		if device in ("mps", "cuda"):
 			# ensuring that these are 32bit (and thus the complex result 64bit) makes fetching faster
 			x = torch.as_tensor(x, dtype=torch.float32, device=device)
 			window = torch.as_tensor(window, dtype=torch.float32, device=device)
@@ -104,7 +107,7 @@ def torch_rfft2(n_fft, step, window, x, zeropad):
 			# zero-padding does not affect the normalization factor
 			result /= np.sqrt(n_fft)
 			# fetch from gpu, which is somewhat costly, but still a bit faster than cpu
-			result = result.cpu()
+			result = result.cpu().numpy()
 		else:
 			# manual implementation
 			n_estimates, x = estimate_and_center(n_fft, step, x)

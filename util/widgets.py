@@ -67,6 +67,7 @@ def startup(cls):
     appQt.setStyleSheet("QToolTip { color: #ffffff; background-color: #353535; border: 1px solid white; }")
 
     win = cls()
+    cursor_thread = None
     # only support audio playback if a valid cursor is available
     if hasattr(win, "canvas") and isinstance(win.canvas.cursor, Cursor):
         cursor_thread = QtCore.QThread(parent=win)
@@ -81,12 +82,14 @@ def startup(cls):
         win.props.audio_widget.is_playing.connect(cursor_updater.update_playing, QtCore.Qt.DirectConnection)
         # if the window is closed, tell the cursor updater to stop
         win.closing.connect(cursor_updater.stop_data, QtCore.Qt.DirectConnection)
-        # when the thread has ended, delete the cursor updater from memory
-        cursor_thread.finished.connect(cursor_updater.deleteLater)
+        # Python owns the updater; it is freed with this frame, after the thread has been joined below
         cursor_thread.start()
     
     win.show()
     appQt.exec_()
+    # closing the window told the cursor updater to stop; let its thread end before the window is destroyed
+    if cursor_thread is not None:
+        cursor_thread.wait()
     config.save_config(win.cfg)
 
 
@@ -841,7 +844,7 @@ class DropoutWidget(QtWidgets.QGroupBox):
         super().__init__("Alignment")
         mode_l = QtWidgets.QLabel("Mode")
         self.mode_c = QtWidgets.QComboBox(self)
-        self.mode_c.addItems(("Heuristic", "Heuristic New", "MaxMono"))
+        self.mode_c.addItems(("Heuristic", "MaxMono"))
         self.mode_c.currentIndexChanged.connect(self.toggle_mode)
 
         self.num_bands_l = QtWidgets.QLabel("Bands")
@@ -1113,7 +1116,14 @@ class MainWindow(QtWidgets.QMainWindow):
     def setup_splitter(self):
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter.addWidget(self.canvas.native)
-        splitter.addWidget(self.props)
+        # scroll the settings panel so its height never forces the window past the screen
+        props_scroll = QtWidgets.QScrollArea()
+        props_scroll.setWidget(self.props)
+        props_scroll.setWidgetResizable(True)
+        props_scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        props_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        props_scroll.setMinimumWidth(self.props.minimumSizeHint().width() + props_scroll.verticalScrollBar().sizeHint().width())
+        splitter.addWidget(props_scroll)
         self.setCentralWidget(splitter)
 
     def closeEvent(self, event):
