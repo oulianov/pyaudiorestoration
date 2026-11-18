@@ -10,23 +10,47 @@ A set of tools to restore audio quality from a variety of old analog sources, su
 - Spectral Expander / Decompressor
 
 ### Installation
-1) You need to install a suitable version of [Python](https://www.python.org/downloads/) first.
-   - Recommended Python version: 
-     - 3.11 as of 2025-05-22
-   - Use 64-bit python as 32-bit python doesn't work for all dependencies.
-   - Make sure you check `Add Python to PATH` during installation.
+1) Install [uv](https://docs.astral.sh/uv/getting-started/installation/).
+   - macOS and Linux:
+     ```bash
+     curl -LsSf https://astral.sh/uv/install.sh | sh
+     ```
+   - Windows (PowerShell):
+     ```powershell
+     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+     ```
+   Open a new terminal afterwards so `uv` is on your `PATH`.
 
-2) Download `pyaudiorestoration`. To do so, click the `<> Code` button at the right, then `Download ZIP`. Unzip to a folder of your choice.
+2) Download `pyaudiorestoration` and install its dependencies:
+   ```bash
+   git clone https://github.com/oulianov/pyaudiorestoration.git
+   cd pyaudiorestoration
+   uv sync
+   ```
+   uv installs Python 3.11 and the locked dependencies into `.venv`. You do not need to install Python yourself.
 
-3) Install the required Python modules using `pip`. 
-   - To do so, open a command prompt with admin rights inside the `pyaudiorestoration` folder you have unzipped.
-   - Run `python -m pip install --upgrade pip` to make sure your `pip` is up to date.
-   - Run `pip install -r requirements.txt` to install the dependencies.
+3) GPU acceleration: on macOS, [pytorch](https://pytorch.org/) is installed by default and spectrograms run on the Apple Silicon GPU (MPS). On Windows and Linux with an NVIDIA GPU, run `uv sync --extra torch` to install pytorch and massively speed up slow calculations; for CUDA builds, configure the matching PyTorch index as described in the [uv PyTorch guide](https://docs.astral.sh/uv/guides/integration/pytorch/).
 
-4) If you have a supported GPU, install [pytorch](https://pytorch.org/get-started/locally/) with CUDA to massively speed up slow calculations by running them on the GPU. 
-
-5) In some cases, you have to troubleshoot the installation of some dependencies. Here is a list of known issues:
+4) In some cases, you have to troubleshoot the installation of some dependencies. Here is a list of known issues:
    - `freetype-py` may have trouble to downloading `freetype.dll`. In that case, download it from [FreeType](https://www.freetype.org/download.html) and place it in a folder included in your system's path.
+
+### Starting a tool
+Run a tool from inside the `pyaudiorestoration` folder with `uv run`, for example:
+```bash
+uv run pyrespeeder_gui.py
+```
+
+| Tool | Command |
+| --- | --- |
+| Wow & Flutter Removal | `uv run pyrespeeder_gui.py` |
+| Speed matching to hum frequency | `uv run humspeed_gui.py` |
+| EQ matching with differential EQ | `uv run difeq_gui.py` |
+| Spectral Temporal Alignment | `uv run pytapesynch_gui.py` |
+| Automatic Dropout Restoration (batch) | `uv run dropouts_gui.py` |
+| Dropout Restoration (select on spectrogram) | `uv run dropout_healer_gui.py` |
+| Spectral Expander / Decompressor | `uv run expander_gui.py` |
+| Stereo panning | `uv run pypan_gui.py` |
+| Renoiser | `uv run renoiser_gui.py` |
 
 
 ### How to Use

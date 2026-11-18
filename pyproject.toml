@@ -1,0 +1,27 @@
+[project]
+name = "pyaudiorestoration"
+version = "0.1.0"
+description = "Tools to restore audio from old analog sources such as tape, cassettes, acetates and vinyl."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "librosa",
+    "matplotlib",
+    "numba",
+    "numpy",
+    "pyfftw",
+    "pyqt5",
+    "resampy",
+    "scipy",
+    "soundfile",
+    # Apple Silicon GPU (MPS) spectrograms
+    "torch; sys_platform == 'darwin'",
+    "vispy",
+]
+
+[project.optional-dependencies]
+# GPU acceleration on CUDA machines; install the build matching your graphics card.
+torch = ["torch"]
+
+[tool.uv]
+package = false
