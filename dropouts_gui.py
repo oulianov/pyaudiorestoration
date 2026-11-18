@@ -127,6 +127,8 @@ class MainWindow(QtWidgets.QMainWindow):
 		try:
 			if self.dropout_widget.mode == "Heuristic":
 				self.process_heuristic(fft_size, hop)
+			elif self.dropout_widget.mode == "Heuristic New":
+				self.process_heuristic_new(fft_size, hop)
 			else:
 				self.process_max_mono(fft_size, hop)
 		except:

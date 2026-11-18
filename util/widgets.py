@@ -844,7 +844,7 @@ class DropoutWidget(QtWidgets.QGroupBox):
         super().__init__("Alignment")
         mode_l = QtWidgets.QLabel("Mode")
         self.mode_c = QtWidgets.QComboBox(self)
-        self.mode_c.addItems(("Heuristic", "MaxMono"))
+        self.mode_c.addItems(("Heuristic", "Heuristic New", "MaxMono"))
         self.mode_c.currentIndexChanged.connect(self.toggle_mode)
 
         self.num_bands_l = QtWidgets.QLabel("Bands")
